@@ -20,7 +20,7 @@ func main() {
 		return
 	}
 	defer rabMQcon.Close()
-	fmt.Println("Successful connetion to RabbitMQ")
+	fmt.Println("Successful SERVER connetion to RabbitMQ")
 
 	ch, err := rabMQcon.Channel()
 	if err != nil {
