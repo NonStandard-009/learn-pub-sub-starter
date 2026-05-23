@@ -35,7 +35,9 @@ func main() {
 		if len(words) == 0 {
 			continue
 		}
-		if words[0] == "pause" {
+
+		switch words[0] {
+		case "pause":
 			fmt.Println("Sending pause message...")
 			err = pubsub.PublishJSON(
 				ch,
@@ -45,7 +47,7 @@ func main() {
 					IsPaused: true,
 				},
 			)
-		} else if words[0] == "resume" {
+		case "resume":
 			fmt.Println("Sending resume message...")
 			err = pubsub.PublishJSON(
 				ch,
@@ -55,10 +57,10 @@ func main() {
 					IsPaused: false,
 				},
 			)
-		} else if words[0] == "quit" {
+		case "quit":
 			fmt.Println("Sending quit message...")
 			return
-		} else {
+		default:
 			fmt.Println("Command not valid...")
 		}
 

@@ -41,6 +41,40 @@ func main() {
 		return
 	}
 
+	gameState := gamelogic.NewGameState(userName)
+	for {
+		words := gamelogic.GetInput()
+		if len(words) == 0 {
+			continue
+		}
+
+		switch words[0] {
+		case "spawn":
+			if err := gameState.CommandSpawn(words); err != nil {
+				fmt.Printf("unexpected error: %v", err)
+				return
+			}
+		case "move":
+			aM, err := gameState.CommandMove(words)
+			if err != nil {
+				fmt.Printf("unexpected error: %v", err)
+				return
+			}
+			fmt.Printf("Successful move to %s\n", aM.ToLocation)
+		case "status":
+			gameState.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "spam":
+			fmt.Println("Spamming not allowed yet!")
+		case "quit":
+			gamelogic.PrintQuit()
+			return
+		default:
+			fmt.Println("Command not valid...")
+		}
+	}
+
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 	<-signalChan
