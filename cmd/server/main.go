@@ -29,6 +29,18 @@ func main() {
 		return
 	}
 
+	_, _, err = pubsub.DeclareAndBind(
+		rabMQcon,
+		routing.ExchangePerilTopic,
+		"game_logs",
+		"game_logs.*",
+		pubsub.Durable,
+	)
+	if err != nil {
+		fmt.Printf("unexpected error: %v", err)
+		return
+	}
+
 	gamelogic.PrintServerHelp()
 	for {
 		words := gamelogic.GetInput()
