@@ -42,6 +42,15 @@ func main() {
 	}
 
 	gamelogic.PrintServerHelp()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		<-signalChan
+		fmt.Println("Exiting program due to admin input...")
+		os.Exit(0)
+	}()
+
 	for {
 		words := gamelogic.GetInput()
 		if len(words) == 0 {
@@ -74,6 +83,7 @@ func main() {
 			return
 		default:
 			fmt.Println("Command not valid...")
+			continue
 		}
 
 		if err != nil {
@@ -81,8 +91,4 @@ func main() {
 			return
 		}
 	}
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
 }

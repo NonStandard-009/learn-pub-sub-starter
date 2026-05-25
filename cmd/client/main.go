@@ -29,19 +29,27 @@ func main() {
 	}
 	queueName := routing.PauseKey + "." + userName
 
-	_, _, err = pubsub.DeclareAndBind(
+	gameState := gamelogic.NewGameState(userName)
+	if err := pubsub.SubscribeJSON(
 		rabMQcon,
 		routing.ExchangePerilDirect,
 		queueName,
 		routing.PauseKey,
 		pubsub.Transient,
-	)
-	if err != nil {
+		handlerPause(gameState),
+	); err != nil {
 		fmt.Printf("unexpected error: %v", err)
 		return
 	}
 
-	gameState := gamelogic.NewGameState(userName)
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		<-signalChan
+		fmt.Println("Exiting program due to admin input...")
+		os.Exit(0)
+	}()
+
 	for {
 		words := gamelogic.GetInput()
 		if len(words) == 0 {
@@ -51,14 +59,14 @@ func main() {
 		switch words[0] {
 		case "spawn":
 			if err := gameState.CommandSpawn(words); err != nil {
-				fmt.Printf("unexpected error: %v", err)
-				return
+				fmt.Printf("unexpected error: %v\n", err)
+				continue
 			}
 		case "move":
 			aM, err := gameState.CommandMove(words)
 			if err != nil {
-				fmt.Printf("unexpected error: %v", err)
-				return
+				fmt.Printf("unexpected error: %v\n", err)
+				continue
 			}
 			fmt.Printf("Successful move to %s\n", aM.ToLocation)
 		case "status":
@@ -72,11 +80,7 @@ func main() {
 			return
 		default:
 			fmt.Println("Command not valid...")
+			continue
 		}
 	}
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-
 }
