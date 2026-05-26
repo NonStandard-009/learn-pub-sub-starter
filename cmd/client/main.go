@@ -45,7 +45,10 @@ func main() {
 		pauseQueue,
 		routing.PauseKey,
 		pubsub.Transient,
-		handlerPause(gameState),
+		func(gS *gamelogic.GameState) pubsub.AckType {
+			handlerPause(gameState)
+			return 0
+		},
 	); err != nil {
 		fmt.Printf("unexpected error: %v", err)
 		return
@@ -57,9 +60,12 @@ func main() {
 		moveQueue,
 		routing.ArmyMovesPrefix+".*",
 		pubsub.Transient,
-		func(mv gamelogic.ArmyMove) {
-			_ = gameState.HandleMove(mv)
-			fmt.Print("> ")
+		func(mv gamelogic.ArmyMove) pubsub.AckType {
+			mvOutcome := gameState.HandleMove(mv)
+			if mvOutcome == 1 || mvOutcome == 2 {
+				return 0
+			}
+			return 2
 		},
 	); err != nil {
 		fmt.Printf("unexpected error: %v", err)
