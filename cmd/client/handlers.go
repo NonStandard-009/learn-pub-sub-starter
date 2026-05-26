@@ -44,9 +44,9 @@ func handlerMove(
 				warRecon,
 			); err != nil {
 				fmt.Printf("error publishing war: %v\n", err)
-				return pubsub.NackDiscard
+				return pubsub.NackRequeue
 			}
-			return pubsub.NackRequeue
+			return pubsub.Ack
 		}
 		return pubsub.NackDiscard
 	}
