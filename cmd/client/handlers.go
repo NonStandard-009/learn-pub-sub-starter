@@ -1,0 +1,78 @@
+package main
+
+import (
+	"fmt"
+
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
+	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) pubsub.AckType {
+	return func(ps routing.PlayingState) pubsub.AckType {
+		defer fmt.Print("> ")
+		gs.HandlePause(ps)
+		return pubsub.Ack
+	}
+}
+
+func handlerMove(
+	gs *gamelogic.GameState,
+	publishChan *amqp.Channel,
+) func(gamelogic.ArmyMove) pubsub.AckType {
+	return func(mv gamelogic.ArmyMove) pubsub.AckType {
+		mvOutcome := gs.HandleMove(mv)
+		defer fmt.Print("> ")
+
+		switch mvOutcome {
+		case gamelogic.MoveOutComeSafe:
+			return pubsub.Ack
+
+		case gamelogic.MoveOutcomeSamePlayer:
+			return pubsub.Ack
+
+		case gamelogic.MoveOutcomeMakeWar:
+			warRecon := gamelogic.RecognitionOfWar{
+				Attacker: mv.Player,
+				Defender: gs.GetPlayerSnap(),
+			}
+			if err := pubsub.PublishJSON(
+				publishChan,
+				routing.ExchangePerilTopic,
+				routing.WarRecognitionsPrefix+"."+gs.GetUsername(),
+				warRecon,
+			); err != nil {
+				fmt.Printf("error publishing war: %v\n", err)
+				return pubsub.NackDiscard
+			}
+			return pubsub.NackRequeue
+		}
+		return pubsub.NackDiscard
+	}
+}
+
+func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.AckType {
+	return func(rw gamelogic.RecognitionOfWar) pubsub.AckType {
+		defer fmt.Print("> ")
+		warOutcome, _, _ := gs.HandleWar(rw)
+
+		switch warOutcome {
+		case gamelogic.WarOutcomeNotInvolved:
+			return pubsub.NackRequeue
+
+		case gamelogic.WarOutcomeNoUnits:
+			return pubsub.NackDiscard
+
+		case gamelogic.WarOutcomeOpponentWon:
+			return pubsub.Ack
+
+		case gamelogic.WarOutcomeYouWon:
+			return pubsub.Ack
+
+		case gamelogic.WarOutcomeDraw:
+			return pubsub.Ack
+		}
+		return pubsub.NackDiscard
+	}
+}

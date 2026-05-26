@@ -68,6 +68,7 @@ func main() {
 					IsPaused: true,
 				},
 			)
+
 		case "resume":
 			fmt.Println("Sending resume message...")
 			err = pubsub.PublishJSON(
@@ -78,9 +79,11 @@ func main() {
 					IsPaused: false,
 				},
 			)
+
 		case "quit":
 			fmt.Println("Sending quit message...")
 			return
+
 		default:
 			fmt.Println("Command not valid...")
 			continue

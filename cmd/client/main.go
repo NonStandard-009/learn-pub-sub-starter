@@ -22,7 +22,7 @@ func main() {
 	defer rabMQcon.Close()
 	fmt.Println("Successful CLIENT connetion to RabbitMQ")
 
-	ch, err := rabMQcon.Channel()
+	rabMQChan, err := rabMQcon.Channel()
 	if err != nil {
 		fmt.Printf("unexpected error: %v", err)
 		return
@@ -36,6 +36,7 @@ func main() {
 
 	pauseQueue := routing.PauseKey + "." + userName
 	moveQueue := routing.ArmyMovesPrefix + "." + userName
+	warQueueKey := routing.WarRecognitionsPrefix + ".*"
 
 	gameState := gamelogic.NewGameState(userName)
 
@@ -45,10 +46,7 @@ func main() {
 		pauseQueue,
 		routing.PauseKey,
 		pubsub.Transient,
-		func(gS *gamelogic.GameState) pubsub.AckType {
-			handlerPause(gameState)
-			return 0
-		},
+		handlerPause(gameState),
 	); err != nil {
 		fmt.Printf("unexpected error: %v", err)
 		return
@@ -60,13 +58,19 @@ func main() {
 		moveQueue,
 		routing.ArmyMovesPrefix+".*",
 		pubsub.Transient,
-		func(mv gamelogic.ArmyMove) pubsub.AckType {
-			mvOutcome := gameState.HandleMove(mv)
-			if mvOutcome == 1 || mvOutcome == 2 {
-				return 0
-			}
-			return 2
-		},
+		handlerMove(gameState, rabMQChan),
+	); err != nil {
+		fmt.Printf("unexpected error: %v", err)
+		return
+	}
+
+	if err := pubsub.SubscribeJSON(
+		rabMQcon,
+		routing.ExchangePerilTopic,
+		"war",
+		warQueueKey,
+		pubsub.Durable,
+		handlerWar(gameState),
 	); err != nil {
 		fmt.Printf("unexpected error: %v", err)
 		return
@@ -92,6 +96,7 @@ func main() {
 				fmt.Printf("ERROR: %v\n", err)
 				continue
 			}
+
 		case "move":
 			armyMove, err := gameState.CommandMove(words)
 			if err != nil {
@@ -101,7 +106,7 @@ func main() {
 			fmt.Printf("Successful move to %s\n", armyMove.ToLocation)
 
 			err = pubsub.PublishJSON(
-				ch,
+				rabMQChan,
 				routing.ExchangePerilTopic,
 				routing.ArmyMovesPrefix+"."+armyMove.Player.Username,
 				armyMove,
@@ -111,15 +116,20 @@ func main() {
 				continue
 			}
 			fmt.Println("Move published successfully")
+
 		case "status":
 			gameState.CommandStatus()
+
 		case "help":
 			gamelogic.PrintClientHelp()
+
 		case "spam":
 			fmt.Println("Spamming not allowed yet!")
+
 		case "quit":
 			gamelogic.PrintQuit()
 			return
+
 		default:
 			fmt.Println("Command not valid...")
 			continue
