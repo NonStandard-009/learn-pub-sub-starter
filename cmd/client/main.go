@@ -34,8 +34,8 @@ func main() {
 		return
 	}
 
-	pauseQueue := routing.PauseKey + "." + userName
-	moveQueue := routing.ArmyMovesPrefix + "." + userName
+	pauseQueueName := routing.PauseKey + "." + userName
+	moveQueueName := routing.ArmyMovesPrefix + "." + userName
 	warQueueKey := routing.WarRecognitionsPrefix + ".*"
 
 	gameState := gamelogic.NewGameState(userName)
@@ -43,7 +43,7 @@ func main() {
 	if err := pubsub.SubscribeJSON(
 		rabMQcon,
 		routing.ExchangePerilDirect,
-		pauseQueue,
+		pauseQueueName,
 		routing.PauseKey,
 		pubsub.Transient,
 		handlerPause(gameState),
@@ -55,7 +55,7 @@ func main() {
 	if err := pubsub.SubscribeJSON(
 		rabMQcon,
 		routing.ExchangePerilTopic,
-		moveQueue,
+		moveQueueName,
 		routing.ArmyMovesPrefix+".*",
 		pubsub.Transient,
 		handlerMove(gameState, rabMQChan),
@@ -67,10 +67,10 @@ func main() {
 	if err := pubsub.SubscribeJSON(
 		rabMQcon,
 		routing.ExchangePerilTopic,
-		"war",
+		routing.WarRecognitionsPrefix,
 		warQueueKey,
 		pubsub.Durable,
-		handlerWar(gameState),
+		handlerWar(gameState, rabMQChan),
 	); err != nil {
 		fmt.Printf("unexpected error: %v", err)
 		return
