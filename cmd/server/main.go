@@ -29,12 +29,13 @@ func main() {
 		return
 	}
 
-	_, _, err = pubsub.DeclareAndBind(
+	err = pubsub.SubscribeGob(
 		rabMQcon,
 		routing.ExchangePerilTopic,
 		"game_logs",
 		"game_logs.*",
 		pubsub.Durable,
+		handlerLog,
 	)
 	if err != nil {
 		fmt.Printf("unexpected error: %v", err)

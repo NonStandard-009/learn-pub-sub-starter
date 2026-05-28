@@ -1,18 +1,19 @@
 package pubsub
 
 import (
-	"encoding/json"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func SubscribeJSON[T any](
+func SubscribeGob[T any](
 	conn *amqp.Connection,
 	exchange,
 	queueName,
 	key string,
-	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
+	queueType SimpleQueueType,
 	handler func(T) AckType,
 ) error {
 	ch, queue, err := DeclareAndBind(
@@ -42,9 +43,15 @@ func SubscribeJSON[T any](
 	go func() {
 		for msg := range deliveryChan {
 			var payload T
-			if err := json.Unmarshal(msg.Body, &payload); err != nil {
+			var data []byte
+
+			buff := bytes.NewBuffer(data)
+			decoder := gob.NewDecoder(buff)
+
+			if err = decoder.Decode(&payload); err != nil {
 				continue
 			}
+
 			ackType := handler(payload)
 
 			switch ackType {
