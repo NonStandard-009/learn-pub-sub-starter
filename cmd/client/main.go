@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -124,7 +125,26 @@ func main() {
 			gamelogic.PrintClientHelp()
 
 		case "spam":
-			fmt.Println("Spamming not allowed yet!")
+			if len(words) < 2 {
+				fmt.Println("No amount of spam messages indicated...")
+				continue
+			}
+			nMsg, err := strconv.Atoi(words[1])
+			if err != nil {
+				fmt.Println("Error converting str to int")
+				continue
+			}
+			for range nMsg {
+				msg := gamelogic.GetMaliciousLog()
+				if err = publishGameLog(
+					rabMQChan,
+					userName,
+					msg,
+				); err != nil {
+					fmt.Printf("error publishing malicious message: %v", err)
+					continue
+				}
+			}
 
 		case "quit":
 			gamelogic.PrintQuit()

@@ -43,9 +43,8 @@ func SubscribeGob[T any](
 	go func() {
 		for msg := range deliveryChan {
 			var payload T
-			var data []byte
 
-			buff := bytes.NewBuffer(data)
+			buff := bytes.NewBuffer(msg.Body)
 			decoder := gob.NewDecoder(buff)
 
 			if err = decoder.Decode(&payload); err != nil {
